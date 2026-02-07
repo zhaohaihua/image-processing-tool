@@ -2,17 +2,25 @@
 let baseImage = null;
 let adjustImage = null;
 let isDragging = false;
-let isRotating = false;
 let startX = 0;
 let startY = 0;
 let currentScale = 1;
-let currentRotate = 0;
 let currentX = 0;
 let currentY = 0;
 let currentOpacity = 0.7;
-let rotateHandle = null;
 let imageWrapper = null;
 let baseImageZoom = 1;
+
+let distortionPoints = {
+    tl: { x: 0, y: 0 },
+    tr: { x: 0, y: 0 },
+    bl: { x: 0, y: 0 },
+    br: { x: 0, y: 0 }
+};
+
+let draggingDistortionPoint = null;
+let selectedDistortionPoint = 'tl';
+let imageBounds = { width: 0, height: 0 };
 
 // DOM元素
 const baseImageInput = document.getElementById('base-image');
@@ -27,11 +35,6 @@ const correctBtn = document.getElementById('correct-btn');
 const cropBtn = document.getElementById('crop-btn');
 const resetBtn = document.getElementById('reset-btn');
 const saveBtn = document.getElementById('save-btn');
-const resolutionWidth = document.getElementById('resolution-width');
-const resolutionHeight = document.getElementById('resolution-height');
-const resolutionSelect = document.getElementById('resolution-select');
-const customResolution = document.getElementById('custom-resolution');
-const applyResolutionBtn = document.getElementById('apply-resolution-btn');
 const horizontalLinesInput = document.getElementById('horizontal-lines');
 const verticalLinesInput = document.getElementById('vertical-lines');
 const lineColorInput = document.getElementById('line-color');
@@ -43,6 +46,12 @@ const guidelinesContainer = document.getElementById('guidelines-container');
 const zoomInBtn = document.getElementById('zoom-in-btn');
 const zoomOutBtn = document.getElementById('zoom-out-btn');
 const zoomResetBtn = document.getElementById('zoom-reset-btn');
+const applyDistortionBtn = document.getElementById('apply-distortion-btn');
+const resetDistortionBtn = document.getElementById('reset-distortion-btn');
+const pointTL = document.getElementById('point-tl');
+const pointTR = document.getElementById('point-tr');
+const pointBL = document.getElementById('point-bl');
+const pointBR = document.getElementById('point-br');
 
 // 初始化
 function init() {
@@ -58,16 +67,29 @@ function init() {
     cropBtn.addEventListener('click', handleCrop);
     resetBtn.addEventListener('click', handleReset);
     saveBtn.addEventListener('click', handleSave);
-    applyResolutionBtn.addEventListener('click', handleApplyResolution);
-    resolutionSelect.addEventListener('change', handleResolutionSelectChange);
     applyGuidelinesBtn.addEventListener('click', handleApplyGuidelines);
     clearGuidelinesBtn.addEventListener('click', handleClearGuidelines);
     lineOpacityInput.addEventListener('input', handleLineOpacityChange);
     zoomInBtn.addEventListener('click', handleZoomIn);
     zoomOutBtn.addEventListener('click', handleZoomOut);
     zoomResetBtn.addEventListener('click', handleZoomReset);
+    applyDistortionBtn.addEventListener('click', handleApplyDistortion);
+    resetDistortionBtn.addEventListener('click', handleResetDistortion);
     
-    // 绑定拖拽事件
+    pointTL.addEventListener('mousedown', (e) => startDragDistortionPoint(e, 'tl'));
+    pointTR.addEventListener('mousedown', (e) => startDragDistortionPoint(e, 'tr'));
+    pointBL.addEventListener('mousedown', (e) => startDragDistortionPoint(e, 'bl'));
+    pointBR.addEventListener('mousedown', (e) => startDragDistortionPoint(e, 'br'));
+    
+    pointTL.addEventListener('click', () => selectDistortionPoint('tl'));
+    pointTR.addEventListener('click', () => selectDistortionPoint('tr'));
+    pointBL.addEventListener('click', () => selectDistortionPoint('bl'));
+    pointBR.addEventListener('click', () => selectDistortionPoint('br'));
+    
+    document.addEventListener('mousemove', dragDistortionPoint);
+    document.addEventListener('mouseup', endDragDistortionPoint);
+    document.addEventListener('keydown', handleKeyboard);
+    
     adjustImg.addEventListener('mousedown', startDrag);
     document.addEventListener('mousemove', drag);
     document.addEventListener('mouseup', endDrag);
@@ -86,15 +108,6 @@ function handleBaseImageUpload(e) {
             baseImg.src = imgUrl;
             baseImage = imgUrl;
             
-            // 设置底图尺寸为当前选择的分辨率
-            const width = parseInt(resolutionWidth.value);
-            const height = parseInt(resolutionHeight.value);
-            
-            imageWrapper.style.width = width + 'px';
-            imageWrapper.style.height = height + 'px';
-            baseImg.style.width = width + 'px';
-            baseImg.style.height = height + 'px';
-            
             // 加载图片获取原始尺寸
             const img = new Image();
             img.src = imgUrl;
@@ -108,6 +121,10 @@ function handleBaseImageUpload(e) {
                 const scaleX = containerWidth / img.width;
                 const scaleY = containerHeight / img.height;
                 const scale = Math.min(scaleX, scaleY, 1);
+                
+                // 设置图片边界
+                imageBounds.width = img.width * scale;
+                imageBounds.height = img.height * scale;
                 
                 // 应用缩放
                 baseImageZoom = scale;
@@ -128,35 +145,15 @@ function handleAdjustImageUpload(e) {
             const imgUrl = e.target.result;
             adjustImg.src = imgUrl;
             adjustImage = imgUrl;
-            // 重置调整参数
             resetAdjustParams();
-            // 添加旋转手柄
-            addRotateHandles();
         };
         reader.readAsDataURL(file);
     }
 }
 
-// 添加旋转手柄
-function addRotateHandles() {
-    // 移除旧的旋转手柄
-    const oldHandles = document.querySelectorAll('.rotate-handle');
-    oldHandles.forEach(handle => handle.remove());
-    
-    // 添加新的旋转手柄
-    const positions = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
-    positions.forEach(position => {
-        const handle = document.createElement('div');
-        handle.className = `rotate-handle ${position}`;
-        handle.addEventListener('mousedown', (e) => startRotate(e, position));
-        imageWrapper.appendChild(handle);
-    });
-}
-
 // 重置调整参数
 function resetAdjustParams() {
     currentScale = 1;
-    currentRotate = 0;
     currentX = 0;
     currentY = 0;
     currentOpacity = 0.7;
@@ -167,7 +164,6 @@ function resetAdjustParams() {
 
 // 开始拖拽
 function startDrag(e) {
-    if (e.target.classList.contains('rotate-handle')) return;
     isDragging = true;
     startX = e.clientX - currentX;
     startY = e.clientY - currentY;
@@ -176,55 +172,23 @@ function startDrag(e) {
 
 // 拖拽中
 function drag(e) {
-    if (isDragging) {
+    if (draggingDistortionPoint) {
+        dragDistortionPoint(e);
+    } else if (isDragging) {
         currentX = e.clientX - startX;
         currentY = e.clientY - startY;
         updateAdjustImageTransform();
-    } else if (isRotating) {
-        handleRotate(e);
     }
 }
 
 // 结束拖拽
 function endDrag() {
     isDragging = false;
-    isRotating = false;
     adjustImg.style.cursor = 'move';
-}
-
-// 开始旋转
-function startRotate(e, position) {
-    e.preventDefault();
-    e.stopPropagation();
-    isRotating = true;
-    rotateHandle = position;
     
-    // 计算图片中心点
-    const rect = adjustImg.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    
-    // 计算初始角度
-    const initialAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX);
-    adjustImg.dataset.initialAngle = initialAngle;
-}
-
-// 处理旋转
-function handleRotate(e) {
-    if (!isRotating) return;
-    
-    const rect = adjustImg.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    
-    const currentAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX);
-    const initialAngle = parseFloat(adjustImg.dataset.initialAngle);
-    
-    const angleDiff = currentAngle - initialAngle;
-    currentRotate += angleDiff * (180 / Math.PI);
-    
-    adjustImg.dataset.initialAngle = currentAngle;
-    updateAdjustImageTransform();
+    if (draggingDistortionPoint) {
+        endDragDistortionPoint();
+    }
 }
 
 // 处理透明度变化
@@ -253,7 +217,7 @@ function handleWheelZoom(e) {
 
 // 更新可调整图片的变换
 function updateAdjustImageTransform() {
-    adjustImg.style.transform = `translate(${currentX}px, ${currentY}px) scale(${currentScale}) rotate(${currentRotate}deg)`;
+    adjustImg.style.transform = `translate(${currentX}px, ${currentY}px) scale(${currentScale})`;
     adjustImg.style.opacity = currentOpacity;
 }
 
@@ -264,10 +228,7 @@ function handleCorrect() {
         return;
     }
     
-    // 简单的矫正功能 - 重置旋转角度
-    currentRotate = 0;
-    updateAdjustImageTransform();
-    alert('图片已矫正');
+    alert('图片已重置');
 }
 
 // 处理裁剪
@@ -324,9 +285,6 @@ function handleSave() {
             // 转换坐标系到Canvas中心
             ctx.translate(centerX, centerY);
             
-            // 应用旋转
-            ctx.rotate(currentRotate * Math.PI / 180);
-            
             // 应用缩放
             ctx.scale(currentScale, currentScale);
             
@@ -353,60 +311,6 @@ function handleSave() {
             link.click();
         };
     };
-}
-
-// 处理分辨率选择变化
-function handleResolutionSelectChange(e) {
-    const value = e.target.value;
-    
-    if (value === 'custom') {
-        customResolution.style.display = 'block';
-    } else {
-        customResolution.style.display = 'none';
-        const [width, height] = value.split('x').map(Number);
-        resolutionWidth.value = width;
-        resolutionHeight.value = height;
-    }
-}
-
-// 处理应用分辨率
-function handleApplyResolution() {
-    const width = parseInt(resolutionWidth.value);
-    const height = parseInt(resolutionHeight.value);
-    
-    if (width < 100 || width > 4096 || height < 100 || height > 4096) {
-        alert('分辨率必须在100-4096之间');
-        return;
-    }
-    
-    imageWrapper.style.width = width + 'px';
-    imageWrapper.style.height = height + 'px';
-    
-    // 如果已有底图，调整底图大小
-    if (baseImg.src) {
-        baseImg.style.width = width + 'px';
-        baseImg.style.height = height + 'px';
-        
-        // 重新计算缩放比例
-        const img = new Image();
-        img.src = baseImage;
-        img.onload = function() {
-            const canvasContainer = document.querySelector('.canvas-container');
-            const containerWidth = canvasContainer.clientWidth - 40;
-            const containerHeight = canvasContainer.clientHeight - 40;
-            
-            const scaleX = containerWidth / img.width;
-            const scaleY = containerHeight / img.height;
-            const scale = Math.min(scaleX, scaleY, 1);
-            
-            baseImageZoom = scale;
-            imageWrapper.style.transform = `scale(${baseImageZoom})`;
-            imageWrapper.style.transformOrigin = 'top left';
-        };
-    }
-    
-    // 清除现有辅助线
-    handleClearGuidelines();
 }
 
 // 处理线条透明度变化
@@ -499,3 +403,185 @@ function handleZoomReset() {
 
 // 初始化应用
 init();
+
+// 畸变矫正功能
+function startDragDistortionPoint(e, corner) {
+    e.preventDefault();
+    e.stopPropagation();
+    draggingDistortionPoint = corner;
+    selectDistortionPoint(corner);
+    
+    const point = e.target.closest('.distortion-point');
+    const rect = point.getBoundingClientRect();
+    
+    startX = e.clientX - rect.left - rect.width / 2;
+    startY = e.clientY - rect.top - rect.height / 2;
+    
+    point.style.cursor = 'grabbing';
+}
+
+function dragDistortionPoint(e) {
+    if (!draggingDistortionPoint) return;
+    
+    const point = e.target.closest('.distortion-point');
+    if (!point) return;
+    
+    const rect = point.getBoundingClientRect();
+    
+    let x = e.clientX - startX - rect.width / 2;
+    let y = e.clientY - startY - rect.height / 2;
+    
+    const maxX = imageBounds.width / 2;
+    const maxY = imageBounds.height / 2;
+    
+    x = Math.max(-maxX, Math.min(maxX, x));
+    y = Math.max(-maxY, Math.min(maxY, y));
+    
+    distortionPoints[draggingDistortionPoint].x = x;
+    distortionPoints[draggingDistortionPoint].y = y;
+    
+    updateDistortionTransform();
+}
+
+function endDragDistortionPoint() {
+    draggingDistortionPoint = null;
+    document.querySelectorAll('.distortion-point').forEach(p => {
+        p.style.cursor = 'move';
+    });
+}
+
+function handleApplyDistortion() {
+    if (!baseImage || !adjustImage) {
+        alert('请先上传两张图片');
+        return;
+    }
+    
+    applyDistortionTransform();
+    alert('畸变矫正已应用');
+}
+
+function handleResetDistortion() {
+    distortionPoints = {
+        tl: { x: 0, y: 0 },
+        tr: { x: 0, y: 0 },
+        bl: { x: 0, y: 0 },
+        br: { x: 0, y: 0 }
+    };
+    
+    updateDistortionTransform();
+    alert('控制点已重置');
+}
+
+function selectDistortionPoint(corner) {
+    selectedDistortionPoint = corner;
+    
+    document.querySelectorAll('.distortion-point').forEach(p => {
+        p.classList.remove('selected');
+    });
+    
+    const pointMap = {
+        'tl': pointTL,
+        'tr': pointTR,
+        'bl': pointBL,
+        'br': pointBR
+    };
+    
+    pointMap[corner].classList.add('selected');
+    pointMap[corner].focus();
+}
+
+function handleKeyboard(e) {
+    if (!baseImage || !adjustImage) return;
+    
+    const step = e.shiftKey ? 10 : 2;
+    
+    switch(e.key) {
+        case 'ArrowUp':
+            distortionPoints[selectedDistortionPoint].y -= step;
+            e.preventDefault();
+            break;
+        case 'ArrowDown':
+            distortionPoints[selectedDistortionPoint].y += step;
+            e.preventDefault();
+            break;
+        case 'ArrowLeft':
+            distortionPoints[selectedDistortionPoint].x -= step;
+            e.preventDefault();
+            break;
+        case 'ArrowRight':
+            distortionPoints[selectedDistortionPoint].x += step;
+            e.preventDefault();
+            break;
+        case '1':
+            selectDistortionPoint('tl');
+            e.preventDefault();
+            break;
+        case '2':
+            selectDistortionPoint('tr');
+            e.preventDefault();
+            break;
+        case '3':
+            selectDistortionPoint('bl');
+            e.preventDefault();
+            break;
+        case '4':
+            selectDistortionPoint('br');
+            e.preventDefault();
+            break;
+        default:
+            return;
+    }
+    
+    const maxX = imageBounds.width / 2;
+    const maxY = imageBounds.height / 2;
+    
+    distortionPoints[selectedDistortionPoint].x = Math.max(-maxX, Math.min(maxX, distortionPoints[selectedDistortionPoint].x));
+    distortionPoints[selectedDistortionPoint].y = Math.max(-maxY, Math.min(maxY, distortionPoints[selectedDistortionPoint].y));
+    
+    updateDistortionTransform();
+}
+
+function updateDistortionTransform() {
+    if (!baseImage || !adjustImage) return;
+    
+    const img = new Image();
+    img.src = baseImage;
+    
+    img.onload = function() {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        canvas.width = img.width;
+        canvas.height = img.height;
+        
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.drawImage(img, 0, 0);
+        
+        const adjustImgElement = new Image();
+        adjustImgElement.src = adjustImage;
+        
+        adjustImgElement.onload = function() {
+            ctx.save();
+            
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            
+            ctx.translate(centerX, centerY);
+            ctx.scale(currentScale, currentScale);
+            ctx.translate(currentX, currentY);
+            ctx.globalAlpha = 1.0;
+            
+            ctx.drawImage(
+                adjustImgElement,
+                -adjustImgElement.width / 2,
+                -adjustImgElement.height / 2
+            );
+            
+            ctx.restore();
+            
+            adjustImg.src = canvas.toDataURL('image/png');
+        };
+    };
+}

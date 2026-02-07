@@ -184,86 +184,6 @@ body {
     margin-bottom: 16px;
 }
 
-.resolution-group {
-    margin-bottom: 16px;
-    padding: 12px;
-    background-color: #1e1e1e;
-    border-radius: 4px;
-    border: 1px solid #3e3e3e;
-}
-
-.resolution-group label {
-    display: block;
-    font-size: 13px;
-    color: #cccccc;
-    margin-bottom: 8px;
-}
-
-.resolution-select {
-    margin-bottom: 10px;
-}
-
-.select-input {
-    width: 100%;
-    padding: 8px;
-    background-color: #3c3c3c;
-    border: 1px solid #4e4e4e;
-    border-radius: 4px;
-    color: #d4d4d4;
-    font-size: 13px;
-    cursor: pointer;
-}
-
-.select-input:focus {
-    outline: none;
-    border-color: #007acc;
-}
-
-.select-input option {
-    background-color: #3c3c3c;
-    color: #d4d4d4;
-}
-
-.custom-resolution {
-    margin-bottom: 10px;
-    padding: 10px;
-    background-color: #2d2d2d;
-    border-radius: 4px;
-    border: 1px solid #3e3e3e;
-}
-
-.resolution-inputs {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 10px;
-}
-
-.resolution-input {
-    flex: 1;
-}
-
-.resolution-input label {
-    display: block;
-    font-size: 12px;
-    color: #999999;
-    margin-bottom: 4px;
-}
-
-.resolution-input input {
-    width: 100%;
-    padding: 6px 8px;
-    background-color: #3c3c3c;
-    border: 1px solid #4e4e4e;
-    border-radius: 4px;
-    color: #d4d4d4;
-    font-size: 12px;
-}
-
-.resolution-input input:focus {
-    outline: none;
-    border-color: #007acc;
-}
-
 .upload-group label {
     display: block;
     font-size: 13px;
@@ -397,24 +317,6 @@ body {
     justify-content: center;
 }
 
-.tips {
-    background-color: #1e1e1e;
-    border-radius: 4px;
-    padding: 12px;
-    border-left: 3px solid #007acc;
-}
-
-.tips p {
-    font-size: 12px;
-    color: #999999;
-    margin-bottom: 6px;
-    line-height: 1.5;
-}
-
-.tips p:last-child {
-    margin-bottom: 0;
-}
-
 .workspace {
     flex: 1;
     background-color: #1e1e1e;
@@ -488,41 +390,6 @@ body {
     border-color: #005a9e;
 }
 
-.rotate-handle {
-    position: absolute;
-    width: 20px;
-    height: 20px;
-    background-color: #007acc;
-    border: 2px solid white;
-    border-radius: 50%;
-    cursor: grab;
-    z-index: 10;
-}
-
-.rotate-handle:hover {
-    background-color: #005a9e;
-}
-
-.rotate-handle.top-left {
-    top: -10px;
-    left: -10px;
-}
-
-.rotate-handle.top-right {
-    top: -10px;
-    right: -10px;
-}
-
-.rotate-handle.bottom-left {
-    bottom: -10px;
-    left: -10px;
-}
-
-.rotate-handle.bottom-right {
-    bottom: -10px;
-    right: -10px;
-}
-
 .guidelines-container {
     position: absolute;
     top: 0;
@@ -548,6 +415,84 @@ body {
     top: 0;
     bottom: 0;
     width: 1px;
+}
+
+.distortion-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.distortion-points-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 15px;
+    padding: 10px;
+    background-color: #1e1e1e;
+    border-radius: 4px;
+    border: 1px solid #3e3e3e;
+}
+
+.distortion-points-info {
+    margin-bottom: 12px;
+    padding: 10px;
+    background-color: #2d2d2d;
+    border-radius: 4px;
+    border-left: 3px solid #007acc;
+}
+
+.info-text {
+    font-size: 12px;
+    color: #999999;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.distortion-point {
+    position: relative;
+    width: 60px;
+    height: 60px;
+    background-color: #2d2d2d;
+    border: 2px solid #007acc;
+    border-radius: 50%;
+    cursor: move;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.distortion-point:hover {
+    background-color: #005a9e;
+    border-color: #007acc;
+    transform: scale(1.1);
+}
+
+.distortion-point:active {
+    background-color: #003d7a;
+    border-color: #005a9e;
+    transform: scale(0.95);
+}
+
+.distortion-point.selected {
+    background-color: #007acc;
+    border-color: #ffffff;
+    box-shadow: 0 0 8px rgba(0, 122, 204, 0.5);
+}
+
+.distortion-point:focus {
+    outline: 2px solid #ffffff;
+    outline-offset: 2px;
+}
+
+.point-label {
+    font-size: 12px;
+    color: #ffffff;
+    font-weight: 600;
+    text-align: center;
+    pointer-events: none;
 }
 
 .zoom-controls {
