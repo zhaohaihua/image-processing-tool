@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片处理工具</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="navbar">
+            <div class="navbar-brand">
+                <h1>图片处理工具</h1>
+            </div>
+            <div class="navbar-center"></div>
+            <div class="navbar-actions">
+                <div class="navbar-buttons">
+                    <button id="select-bg-btn" class="btn btn-primary">
+                        <span class="btn-icon">📷</span>
+                        选择背景图
+                    </button>
+                    <input type="file" id="base-image" accept="image/*" class="hidden-file-input">
+                    
+                    <button id="select-img-btn" class="btn btn-primary">
+                        <span class="btn-icon">📷</span>
+                        选择图片
+                    </button>
+                    <input type="file" id="adjust-image" accept="image/*" class="hidden-file-input">
+                    
+                    <button id="save-btn" class="btn btn-success">
+                        <span class="btn-icon">💾</span>
+                        保存结果
+                    </button>
+                </div>
+            </div>
+        </header>
+        
+        <div class="main-content">
+            <aside class="sidebar">
+                <div class="sidebar-section">
+                    <h3>底图分辨率</h3>
+                    <div class="resolution-group">
+                        <label>底图分辨率</label>
+                        <div class="resolution-select">
+                            <select id="resolution-select" class="select-input">
+                                <option value="800x600">800 x 600 (默认)</option>
+                                <option value="1920x1080">1920 x 1080 (Full HD)</option>
+                                <option value="1280x720">1280 x 720 (HD)</option>
+                                <option value="2560x1440">2560 x 1440 (2K)</option>
+                                <option value="3840x2160">3840 x 2160 (4K)</option>
+                                <option value="1366x768">1366 x 768</option>
+                                <option value="1600x900">1600 x 900</option>
+                                <option value="2560x1080">2560 x 1080 (Ultra Wide)</option>
+                                <option value="3440x1440">3440 x 1440 (Ultra Wide)</option>
+                                <option value="custom">自定义</option>
+                            </select>
+                        </div>
+                        <div id="custom-resolution" class="custom-resolution" style="display: none;">
+                            <div class="resolution-inputs">
+                                <div class="resolution-input">
+                                    <label>宽度</label>
+                                    <input type="number" id="resolution-width" value="1920" min="100" max="4096">
+                                </div>
+                                <div class="resolution-input">
+                                    <label>高度</label>
+                                    <input type="number" id="resolution-height" value="1080" min="100" max="4096">
+                                </div>
+                            </div>
+                        </div>
+                        <button id="apply-resolution-btn" class="btn btn-secondary">应用分辨率</button>
+                    </div>
+                </div>
+                
+                <div class="sidebar-section">
+                    <h3>透明度控制</h3>
+                    <div class="control-group">
+                        <label for="opacity-slider">透明度</label>
+                        <input type="range" id="opacity-slider" min="0" max="100" value="70" class="slider">
+                        <span id="opacity-value">70%</span>
+                    </div>
+                </div>
+                
+                <div class="sidebar-section">
+                    <h3>辅助线设置</h3>
+                    <div class="control-group">
+                        <label for="horizontal-lines">水平线数量</label>
+                        <input type="number" id="horizontal-lines" value="3" min="0" max="20" class="number-input">
+                    </div>
+                    <div class="control-group">
+                        <label for="vertical-lines">垂直线数量</label>
+                        <input type="number" id="vertical-lines" value="3" min="0" max="20" class="number-input">
+                    </div>
+                    <div class="control-group">
+                        <label for="line-color">线条颜色</label>
+                        <input type="color" id="line-color" value="#ff0000" class="color-input">
+                    </div>
+                    <div class="control-group">
+                        <label for="line-opacity">线条透明度</label>
+                        <input type="range" id="line-opacity" min="10" max="100" value="50" class="slider">
+                        <span id="line-opacity-value">50%</span>
+                    </div>
+                    <button id="apply-guidelines-btn" class="btn btn-secondary">应用辅助线</button>
+                    <button id="clear-guidelines-btn" class="btn btn-danger">清除辅助线</button>
+                </div>
+                
+                <div class="sidebar-section">
+                    <h3>图片操作</h3>
+                    <div class="operation-buttons">
+                        <button id="correct-btn" class="btn btn-warning">
+                            <span class="btn-icon">↻</span>
+                            矫正图片
+                        </button>
+                        <button id="crop-btn" class="btn btn-warning">
+                            <span class="btn-icon">✂</span>
+                            裁剪图片
+                        </button>
+                        <button id="reset-btn" class="btn btn-danger">
+                            <span class="btn-icon">↺</span>
+                            重置
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="sidebar-section">
+                    <h3>操作提示</h3>
+                    <div class="tips">
+                        <p>• 拖拽图片移动位置</p>
+                        <p>• 滚轮缩放图片</p>
+                        <p>• 拖拽角落旋转图片</p>
+                    </div>
+                </div>
+            </aside>
+            
+            <main class="workspace">
+                <div class="canvas-container">
+                    <div id="image-wrapper" class="image-wrapper">
+                        <img id="base-img" class="base-image" src="" alt="固定底图">
+                        <img id="adjust-img" class="adjustable-image" src="" alt="处理图片">
+                        <div id="guidelines-container" class="guidelines-container"></div>
+                    </div>
+                    <div class="zoom-controls">
+                        <button id="zoom-in-btn" class="zoom-btn" title="放大">
+                            <span class="zoom-icon">+</span>
+                        </button>
+                        <button id="zoom-out-btn" class="zoom-btn" title="缩小">
+                            <span class="zoom-icon">−</span>
+                        </button>
+                        <button id="zoom-reset-btn" class="zoom-btn" title="重置缩放">
+                            <span class="zoom-icon">⟲</span>
+                        </button>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
